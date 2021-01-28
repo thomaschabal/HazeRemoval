@@ -16,6 +16,7 @@ class HazeRemover:
 
     def extract_dark_channel(self, A=np.array([1,1,1])):
         start = time()
+        
         min_per_patch_and_channel = np.zeros_like(self.image)
 
         patch_side_size = self.patch_size // 2
