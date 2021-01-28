@@ -79,7 +79,19 @@ class HazeRemover:
             print("Took {:2f}s to compute radiance".format(time() - start))
 
 
-    def remove_haze(self):
+    def increase_exposure(self, value=None):
+        radiance = np.float32(self.radiance)
+        hsv = cv2.cvtColor(radiance, cv2.COLOR_RGB2HSV)
+        
+        TARGET_MEAN_VALUE = 2/3 # Empirical choice, to be refined
+        if value is None:
+            value = TARGET_MEAN_VALUE - np.mean(hsv[:,:,2])
+        
+        hsv[:,:,2] += value
+        self.final_radiance = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+
+    def remove_haze(self, add_exposure_value=None):
         start = time()
 
         print("Extracting dark channel...")
@@ -93,7 +105,10 @@ class HazeRemover:
 
         print("Computing radiance...")
         self.compute_radiance()
+        
+        print("Increasing exposure...")
+        self.increase_exposure(add_exposure_value)
 
         print("Took {:2f}s to perform haze removal".format(time() - start))
 
-        return self.radiance, self.transmission, self.atmospheric_light
+        return self.final_radiance, self.transmission, self.atmospheric_light
