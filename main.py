@@ -1,4 +1,4 @@
-# python main.py ./images/img.jpg
+# python main.py -p ./images/img.jpg
 
 import argparse
 import numpy as np
