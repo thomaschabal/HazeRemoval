@@ -7,13 +7,14 @@ def resize_img(img, new_h=400):
     new_w = int(new_h * ratio)
     return cv2.resize(img, (new_w, new_h))
 
-def load_image(path, height=400):
+def load_image(path, height=400, show_image=True):
     image = plt.imread(path) / 255
     image = resize_img(image, height)
-    plt.imshow(image)
-    plt.axis('off')
-    plt.title('Initial image')
-    plt.show()
+    if show_image:
+        plt.imshow(image)
+        plt.axis('off')
+        plt.title('Initial image')
+        plt.show()
     return image
 
 def show_imgs(imgs, figsize=(20,10)):
