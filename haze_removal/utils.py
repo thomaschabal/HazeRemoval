@@ -11,6 +11,8 @@ def load_image(path, height=400):
     image = plt.imread(path) / 255
     image = resize_img(image, height)
     plt.imshow(image)
+    plt.axis('off')
+    plt.title('Initial image')
     plt.show()
     return image
 

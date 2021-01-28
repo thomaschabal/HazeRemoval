@@ -3,7 +3,7 @@ import cv2
 from tqdm import tqdm
 from time import time
 
-from constants import PATCH_SIZE, OMEGA, T0
+from .constants import PATCH_SIZE, OMEGA, T0
 
 
 class HazeRemover:
