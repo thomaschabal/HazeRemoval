@@ -1,0 +1,3 @@
+OMEGA = 0.95
+PATCH_SIZE = 5
+T0 = 0.1
