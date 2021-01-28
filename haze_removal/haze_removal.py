@@ -14,9 +14,12 @@ class HazeRemover:
         self.print_intermediate = print_intermediate
         self.image = image
 
-    def extract_dark_channel(self, A=np.array([1,1,1])):
+    def extract_dark_channel(self, A=None):
         start = time()
-        
+
+        if A is None:
+            A = np.ones(self.image.shape[2])
+
         min_per_patch_and_channel = np.zeros_like(self.image)
 
         patch_side_size = self.patch_size // 2
@@ -33,12 +36,12 @@ class HazeRemover:
 
         self.dark_channel = np.min(min_per_patch_and_channel, axis=2)
 
-    
+
     def compute_atmospheric_light(self):
         sorted_darkness = np.sort(self.dark_channel).flatten()
         values_to_keep = int(0.1 / 100 * sorted_darkness.shape[0])
         top_brightest_dark_channel = sorted_darkness[:values_to_keep]
-        
+
         keep_dark_channel = np.where(self.dark_channel >= np.min(top_brightest_dark_channel), 1, 0)
 
         maximum_intensity = 0
@@ -61,13 +64,14 @@ class HazeRemover:
         self.transmission = 1 - self.omega * self.dark_channel
 
     ## ADD SOFT MATTING AND GUIDED FILTERING
-    
+
 
     def compute_radiance(self):
         start = time()
 
         transmission_bounded = np.where(self.transmission >= self.t0, self.transmission, self.t0)
-        transmission_bounded = cv2.merge((transmission_bounded, transmission_bounded, transmission_bounded))
+        # transmission_bounded = cv2.merge((transmission_bounded, transmission_bounded, transmission_bounded))
+        transmission_bounded = np.broadcast_to(transmission_bounded[...,None], self.image.shape)
 
         self.radiance = (self.image - self.atmospheric_light) / transmission_bounded + self.atmospheric_light
 
@@ -91,5 +95,5 @@ class HazeRemover:
         self.compute_radiance()
 
         print("Took {:2f}s to perform haze removal".format(time() - start))
-        
+
         return self.radiance, self.transmission, self.atmospheric_light
