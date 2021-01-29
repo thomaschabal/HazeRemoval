@@ -48,26 +48,17 @@ class HazeRemover:
         self.dark_channel = np.min(min_per_patch_and_channel, axis=2)
 
     def compute_atmospheric_light(self):
-        sorted_darkness = np.sort(self.dark_channel).flatten()
-        values_to_keep = int(0.1 / 100 * sorted_darkness.shape[0])
-        top_brightest_dark_channel = sorted_darkness[:values_to_keep]
-
-        keep_dark_channel = np.where(self.dark_channel >= np.min(top_brightest_dark_channel), 1, 0)
+        n = int(1e-3 * np.prod(self.dark_channel.shape))
+        brightest_dark_channel = np.argpartition(self.dark_channel.ravel(), -n)[-n:]
 
         maximum_intensity = 0
-        atmospheric_light = None
-        h, w = self.image.shape[:2]
-        for x in tqdm(range(h)):
-            for y in range(w):
-                if keep_dark_channel[x, y]:
-                    pixel = self.image[x, y, :]
-                    intensity = np.linalg.norm(pixel)
-                    if intensity >= maximum_intensity:
-                        maximum_intensity = intensity
-                        atmospheric_light = pixel
-
-        self.atmospheric_light = atmospheric_light
-
+        self.atmospheric_light = None
+        interest_zone = self.image.reshape((np.prod(self.dark_channel.shape), -1))[brightest_dark_channel]
+        for pixel in interest_zone:
+            intensity = np.sum(pixel)  #fixme: what is the definition?
+            if intensity > maximum_intensity:
+                maximum_intensity = intensity
+                self.atmospheric_light = pixel
 
     def compute_transmission(self):
         self.extract_dark_channel(self.atmospheric_light)
