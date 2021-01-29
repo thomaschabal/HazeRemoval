@@ -80,18 +80,16 @@ class HazeRemover:
         A = self.laplacian + self.lambd * identity(self.laplacian.shape[0])
         b = self.lambd * self.transmission.ravel()
         self.transmission = spsolve(A, b).reshape(self.image.shape[:2])
+
         self.transmission = np.clip(self.transmission, 0, 1)  #fixme
+
         if self.print_intermediate:
             print("Took {:2f}s to compute soft matting".format(time() - start))
 
     def compute_radiance(self):
         start = time()
 
-        transmission_bounded = np.where(self.transmission >= self.t0, self.transmission, self.t0)
-        # transmission_bounded = cv2.merge((transmission_bounded, transmission_bounded, transmission_bounded))
-        transmission_bounded = np.broadcast_to(transmission_bounded[...,None], self.image.shape)
-
-        self.radiance = (self.image - self.atmospheric_light) / transmission_bounded + self.atmospheric_light
+        self.radiance = (self.image - self.atmospheric_light) / np.expand_dims(np.maximum(self.transmission, self.t0), -1) + self.atmospheric_light
 
         if self.print_intermediate:
             print("Took {:2f}s to compute radiance".format(time() - start))
