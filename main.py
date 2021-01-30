@@ -25,8 +25,9 @@ image = load_image(args.path, args.height, show_image=False)
 haze_remover = HazeRemover(image, patch_size=args.patch_size)
 radiance, transmission, _ = haze_remover.remove_haze()
 
-#radiance = (radiance - np.min(radiance)) / (np.max(radiance) - np.min(radiance))
-radiance = np.where(radiance >= 1, 1, radiance)
+# radiance = (radiance - np.min(radiance)) / (np.max(radiance) - np.min(radiance))
+# radiance = np.where(radiance >= 1, 1, radiance)
+clipped_radiance = np.clip(radiance, 0, 1)
 
-plt.imsave(args.save_folder + f"{name}_radiance.{extension}", radiance)
+plt.imsave(args.save_folder + f"{name}_radiance.{extension}", clipped_radiance)
 plt.imsave(args.save_folder + f"{name}_transmission.{extension}", transmission)
