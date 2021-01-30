@@ -1,21 +1,23 @@
 import matplotlib.pyplot as plt
 import cv2
+from skimage.io import imread
+from skimage.transform import resize
 
-
-def resize_img(img, new_h=400):
-    ratio = img.shape[1] / img.shape[0]
-    new_w = int(new_h * ratio)
-    return cv2.resize(img, (new_w, new_h))
-
-def load_image(path, height=400, show_image=True):
-    image = plt.imread(path) / 255
-    image = resize_img(image, height)
+def load_image(path, maxwh=400, show_image=True):
+    image = imread(path)
+    h, w = image.shape[:2]
+    if max(h, w) > maxwh:
+        if h > w:
+            image = resize(image, (maxwh, int(w*maxwh/h)))
+        else:
+            image = resize(image, (int(h*maxwh/w), maxwh))
     if show_image:
         plt.imshow(image)
         plt.axis('off')
         plt.title('Initial image')
         plt.show()
     return image
+
 
 def show_imgs(imgs, figsize=(20,10)):
     plt.figure(figsize=figsize)
