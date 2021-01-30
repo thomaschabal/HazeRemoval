@@ -4,7 +4,7 @@ from tqdm import tqdm
 from time import time
 from scipy.ndimage import minimum_filter
 from scipy.sparse import identity
-from scipy.sparse.linalg import lsqr, spsolve
+from scipy.sparse.linalg import spsolve
 
 from .constants import PATCH_SIZE, OMEGA, T0, LAMBDA, EPS, R
 from .laplacian import compute_laplacian
@@ -59,18 +59,12 @@ class HazeRemover:
         # self.transmission = np.clip(self.transmission, 0, 1)  #fixme
 
         if self.print_intermediate:
-            print("Took {:2f}s to compute soft matting".format(time() - start))
+            print("Took {:2f}s to compute soft matte".format(time() - start))
 
     def compute_radiance(self):
-        start = time()
-
         self.radiance = (self.image - self.atmospheric_light) / np.expand_dims(np.maximum(self.transmission, self.t0), -1) + self.atmospheric_light
-
         self.radiance = np.clip(self.radiance, 0, 1)
         # radiance = (radiance - np.min(radiance)) / (np.max(radiance) - np.min(radiance))
-
-        if self.print_intermediate:
-            print("Took {:2f}s to compute radiance".format(time() - start))
 
 
     def increase_exposure(self, value=1):
