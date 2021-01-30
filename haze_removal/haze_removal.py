@@ -1,5 +1,5 @@
 import numpy as np
-import cv2
+import skimage.exposure as exposure
 from tqdm import tqdm
 from time import time
 from scipy.ndimage import minimum_filter
@@ -73,19 +73,10 @@ class HazeRemover:
             print("Took {:2f}s to compute radiance".format(time() - start))
 
 
-    def increase_exposure(self, value=None):
-        radiance = np.float32(self.radiance)
-        hsv = cv2.cvtColor(radiance, cv2.COLOR_RGB2HSV)
+    def increase_exposure(self, value=1):
+        self.radiance = exposure.adjust_gamma(self.radiance, gamma=value) # gain
 
-        TARGET_MEAN_VALUE = 2/3 # Empirical choice, to be refined
-        if value is None:
-            value = TARGET_MEAN_VALUE - np.mean(hsv[:,:,2])
-
-        hsv[:,:,2] += value
-        self.final_radiance = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
-
-
-    def remove_haze(self, add_exposure_value=None):
+    def remove_haze(self, correct_exposition=1):
         start = time()
 
         print("Computing atmospheric light...")
@@ -102,8 +93,8 @@ class HazeRemover:
         self.compute_radiance()
 
         print("Increasing exposure...")
-        self.increase_exposure(add_exposure_value)
+        self.increase_exposure(correct_exposition)
 
         print("Took {:2f}s to perform haze removal".format(time() - start))
 
-        return self.final_radiance, self.transmission, self.atmospheric_light
+        return self.radiance, self.transmission, self.atmospheric_light

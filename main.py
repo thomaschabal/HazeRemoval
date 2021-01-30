@@ -22,8 +22,8 @@ name, extension = file_name.split('.')
 print(f"Loading image from {args.path}")
 image = load_image(args.path, args.height, show_image=False)
 
-haze_remover = HazeRemover(image, patch_size=args.patch_size)
-radiance, transmission, _ = haze_remover.remove_haze()
+haze_remover = HazeRemover(image, patch_size=args.patch_size, matting=False)
+radiance, transmission, _ = haze_remover.remove_haze(.6)
 
 plt.imsave(args.save_folder + f"{name}_radiance.{extension}", radiance)
 plt.imsave(args.save_folder + f"{name}_transmission.{extension}", transmission)
