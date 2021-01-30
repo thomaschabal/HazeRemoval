@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 from tqdm import tqdm
 from time import time
+from scipy.ndimage import minimum_filter
 from scipy.sparse import identity
 from scipy.sparse.linalg import lsqr, spsolve
 
@@ -24,36 +25,17 @@ class HazeRemover:
         if print_intermediate:
             print("Took {:2f}s to compute laplacian".format(time() - start))
 
-
-    def extract_dark_channel(self, A=None):
-        start = time()
-
-        if A is None:
-            A = np.ones(self.image.shape[2])
-
-        min_per_patch_and_channel = np.zeros_like(self.image)
-
-        patch_side_size = self.patch_size // 2
-        h, w = self.image.shape[:2]
-        for x in tqdm(range(h)):
-            for y in range(w):
-                min_x, max_x = max(0, x - patch_side_size), min(x + patch_side_size, h)
-                min_y, max_y = max(0, y - patch_side_size), min(y + patch_side_size, w)
-                for c in range(self.image.shape[2]):
-                    min_per_patch_and_channel[x, y, c] = np.min(self.image[min_x:max_x, min_y:max_y, c]) / A[c]
-
-        if self.print_intermediate:
-            print("Took {:2f}s to compute dark channel".format(time() - start))
-
-        self.dark_channel = np.min(min_per_patch_and_channel, axis=2)
+    def extract_dark_channel(self, img):
+        return np.min(minimum_filter(img, self.patch_size), axis=2)
 
     def compute_atmospheric_light(self):
-        n = int(1e-3 * np.prod(self.dark_channel.shape))
-        brightest_dark_channel = np.argpartition(self.dark_channel.ravel(), -n)[-n:]
+        dark_channel = self.extract_dark_channel(self.image)
+        n = int(1e-3 * np.prod(dark_channel.shape))
+        brightest_dark_channel = np.argpartition(dark_channel.ravel(), -n)[-n:]
 
         maximum_intensity = 0
         self.atmospheric_light = None
-        interest_zone = self.image.reshape((np.prod(self.dark_channel.shape), -1))[brightest_dark_channel]
+        interest_zone = self.image.reshape((np.prod(dark_channel.shape), -1))[brightest_dark_channel]
         for pixel in interest_zone:
             intensity = np.sum(pixel)  #fixme: what is the definition?
             if intensity > maximum_intensity:
@@ -61,8 +43,8 @@ class HazeRemover:
                 self.atmospheric_light = pixel
 
     def compute_transmission(self):
-        self.extract_dark_channel(self.atmospheric_light)
-        self.transmission = 1 - self.omega * self.dark_channel
+        dark_channel_normalized = self.extract_dark_channel(self.image / self.atmospheric_light[None, None])
+        self.transmission = 1 - self.omega * dark_channel_normalized
 
     #TODO: ADD GUIDED FILTERING
 
@@ -72,7 +54,7 @@ class HazeRemover:
         b = self.lambd * self.transmission.ravel()
         self.transmission = spsolve(A, b).reshape(self.image.shape[:2])
 
-        self.transmission = np.clip(self.transmission, 0, 1)  #fixme
+        # self.transmission = np.clip(self.transmission, 0, 1)  #fixme
 
         if self.print_intermediate:
             print("Took {:2f}s to compute soft matting".format(time() - start))
@@ -100,9 +82,6 @@ class HazeRemover:
 
     def remove_haze(self, add_exposure_value=None):
         start = time()
-
-        print("Extracting dark channel...")
-        self.extract_dark_channel()
 
         print("Computing atmospheric light...")
         self.compute_atmospheric_light()
