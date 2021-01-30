@@ -3,47 +3,137 @@ from tqdm import tqdm
 from scipy.sparse import csr_matrix
 
 
-#@jit
-def compute_laplacian(image, eps, r):
-    h, w = image.shape[:2]
+# @jit
+def compute_laplacian(image, epsilon, r):
+    """
+    From https://github.com/pymatting/pymatting/
+    """
+    image = image[..., :3]
+    h, w, d = image.shape
     n = h * w
+    assert d == 3
+    size = 2 * r + 1
+    window_area = size * size
 
-    area = (2 * r + 1) ** 2
+    indptr = np.zeros(n + 1, dtype=np.int64)
+    indices = np.zeros(n * (4 * r + 1) ** 2, dtype=np.int64)
+    values = np.zeros((n, 4 * r + 1, 4 * r + 1), dtype=np.float64)
 
-    indices = np.arange(n).reshape(h, w)
+    for yi in range(h):
+        for xi in range(w):
+            i = xi + yi * w
+            k = i * (4 * r + 1) ** 2
+            for yj in range(yi - 2 * r, yi + 2 * r + 1):
+                for xj in range(xi - 2 * r, xi + 2 * r + 1):
+                    j = xj + yj * w
 
-    values = np.zeros((n, area ** 2))
-    i_inds = np.zeros((n, area ** 2), dtype=np.int32)
-    j_inds = np.zeros((n, area ** 2), dtype=np.int32)
+                    if 0 <= xj < w and 0 <= yj < h:
+                        indices[k] = j
 
-    # gray = (image[:, :, 0] + image[:, :, 1] + image[:, :, 2]) / 3.0
-    # v = np.std(gray)
-
-    for y in tqdm(range(r, h - r)):
-        for x in range(r, w - r):
-            i = x + y * w
-
-            X = np.ones((area, 3 + 1))
-
-            k = 0
-            for y2 in range(y - r, y + r + 1):
-                for x2 in range(x - r, x + r + 1):
-                    for c in range(3):
-                        X[k, c] = image[y2, x2, c]
                     k += 1
 
-            window_indices = indices[y - r : y + r + 1, x - r : x + r + 1].flatten()
+            indptr[i + 1] = k
 
-            K = np.dot(X, X.T)
+    # Centered and normalized window colors
+    c = np.zeros((2 * r + 1, 2 * r + 1, 3))
 
-            f = np.linalg.solve(K + eps * np.eye(area), K)
+    # For each pixel of image
+    for y in tqdm(range(r, h - r)):
+        for x in range(r, w - r):
 
-            tmp2 = np.eye(f.shape[0]) - f
-            tmp3 = tmp2.dot(tmp2.T)
+            # For each color channel
+            for dc in range(3):
+                # Calculate sum of color channel in window
+                s = 0.0
+                for dy in range(size):
+                    for dx in range(size):
+                        s += image[y + dy - r, x + dx - r, dc]
 
-            for k in range(area):
-                i_inds[i, k::area] = window_indices
-                j_inds[i, k * area : k * area + area] = window_indices
-            values[i] = tmp3.ravel()
+                # Calculate centered window color
+                for dy in range(2 * r + 1):
+                    for dx in range(2 * r + 1):
+                        c[dy, dx, dc] = (
+                            image[y + dy - r, x + dx - r, dc] - s / window_area
+                        )
 
-    return csr_matrix((values.ravel(), (i_inds.ravel(), j_inds.ravel())), shape=(n, n))
+            # Calculate covariance matrix over color channels with epsilon regularization
+            a00 = epsilon
+            a01 = 0.0
+            a02 = 0.0
+            a11 = epsilon
+            a12 = 0.0
+            a22 = epsilon
+
+            for dy in range(size):
+                for dx in range(size):
+                    a00 += c[dy, dx, 0] * c[dy, dx, 0]
+                    a01 += c[dy, dx, 0] * c[dy, dx, 1]
+                    a02 += c[dy, dx, 0] * c[dy, dx, 2]
+                    a11 += c[dy, dx, 1] * c[dy, dx, 1]
+                    a12 += c[dy, dx, 1] * c[dy, dx, 2]
+                    a22 += c[dy, dx, 2] * c[dy, dx, 2]
+
+            a00 /= window_area
+            a01 /= window_area
+            a02 /= window_area
+            a11 /= window_area
+            a12 /= window_area
+            a22 /= window_area
+
+            det = (
+                a00 * a12 * a12
+                + a01 * a01 * a22
+                + a02 * a02 * a11
+                - a00 * a11 * a22
+                - 2 * a01 * a02 * a12
+            )
+
+            inv_det = 1.0 / det
+
+            # Calculate inverse covariance matrix
+            m00 = (a12 * a12 - a11 * a22) * inv_det
+            m01 = (a01 * a22 - a02 * a12) * inv_det
+            m02 = (a02 * a11 - a01 * a12) * inv_det
+            m11 = (a02 * a02 - a00 * a22) * inv_det
+            m12 = (a00 * a12 - a01 * a02) * inv_det
+            m22 = (a01 * a01 - a00 * a11) * inv_det
+
+            # For each pair ((xi, yi), (xj, yj)) in a (2 r + 1)x(2 r + 1) window
+            for dyi in range(2 * r + 1):
+                for dxi in range(2 * r + 1):
+                    s = c[dyi, dxi, 0]
+                    t = c[dyi, dxi, 1]
+                    u = c[dyi, dxi, 2]
+
+                    c0 = m00 * s + m01 * t + m02 * u
+                    c1 = m01 * s + m11 * t + m12 * u
+                    c2 = m02 * s + m12 * t + m22 * u
+
+                    for dyj in range(2 * r + 1):
+                        for dxj in range(2 * r + 1):
+                            xi = x + dxi - r
+                            yi = y + dyi - r
+                            xj = x + dxj - r
+                            yj = y + dyj - r
+
+                            i = xi + yi * w
+                            j = xj + yj * w
+
+                            # Calculate contribution of pixel pair to L_ij
+                            temp = (
+                                c0 * c[dyj, dxj, 0]
+                                + c1 * c[dyj, dxj, 1]
+                                + c2 * c[dyj, dxj, 2]
+                            )
+
+                            value = (1.0 if (i == j) else 0.0) - (
+                                1 + temp
+                            ) / window_area
+
+                            dx = xj - xi + 2 * r
+                            dy = yj - yi + 2 * r
+
+                            values[i, dy, dx] += value
+
+    return csr_matrix((values.ravel(), indices, indptr), (n, n))
+
