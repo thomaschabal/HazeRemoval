@@ -64,6 +64,9 @@ class HazeRemover:
 
         self.radiance = (self.image - self.atmospheric_light) / np.expand_dims(np.maximum(self.transmission, self.t0), -1) + self.atmospheric_light
 
+        self.radiance = np.clip(self.radiance, 0, 1)
+        # radiance = (radiance - np.min(radiance)) / (np.max(radiance) - np.min(radiance))
+
         if self.print_intermediate:
             print("Took {:2f}s to compute radiance".format(time() - start))
 
