@@ -11,19 +11,21 @@ from .laplacian import compute_laplacian
 
 
 class HazeRemover:
-    def __init__(self, image, patch_size=PATCH_SIZE, omega=OMEGA, t0=T0, lambd=LAMBDA, eps=EPS, r=R, print_intermediate=True):
+    def __init__(self, image, patch_size=PATCH_SIZE, omega=OMEGA, t0=T0, lambd=LAMBDA, eps=EPS, r=R, matting=True, print_intermediate=True):
         self.patch_size = patch_size
         self.omega = omega
         self.t0 = t0
         self.lambd = lambd
         self.print_intermediate = print_intermediate
         self.image = image
+        self.matting = matting
 
-        print("Computing matting laplacian...")
-        start = time()
-        self.laplacian = compute_laplacian(image, eps, r)
-        if print_intermediate:
-            print("Took {:2f}s to compute laplacian".format(time() - start))
+        if matting:
+            print("Computing matting laplacian...")
+            start = time()
+            self.laplacian = compute_laplacian(image, eps, r)
+            if print_intermediate:
+                print("Took {:2f}s to compute laplacian".format(time() - start))
 
     def extract_dark_channel(self, img):
         return np.min(minimum_filter(img, self.patch_size), axis=2)
@@ -92,8 +94,9 @@ class HazeRemover:
         print("Computing transmission...")
         self.compute_transmission()
 
-        print("Soft matting...")
-        self.soft_matting()
+        if self.matting:
+            print("Soft matting...")
+            self.soft_matting()
 
         print("Computing radiance...")
         self.compute_radiance()
