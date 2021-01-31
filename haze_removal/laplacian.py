@@ -1,17 +1,17 @@
 import numpy as np
 from tqdm import tqdm
 from scipy.sparse import csr_matrix
+from numba import jit
 
 
-# @jit
-def compute_laplacian(image, epsilon, r):
+@jit
+def _laplacian_internals(image, epsilon, r):
     """
     From https://github.com/pymatting/pymatting/
     """
-    image = image[..., :3]
+    image = image[..., :3]  #fixme
     h, w, d = image.shape
     n = h * w
-    assert d == 3
     size = 2 * r + 1
     window_area = size * size
 
@@ -38,7 +38,7 @@ def compute_laplacian(image, epsilon, r):
     c = np.zeros((2 * r + 1, 2 * r + 1, 3))
 
     # For each pixel of image
-    for y in tqdm(range(r, h - r)):
+    for y in range(r, h - r):
         for x in range(r, w - r):
 
             # For each color channel
@@ -134,6 +134,11 @@ def compute_laplacian(image, epsilon, r):
                             dy = yj - yi + 2 * r
 
                             values[i, dy, dx] += value
+    return values, indices, indptr
 
+
+def compute_laplacian(image, epsilon, r):
+    n = np.prod(image.shape[:2])
+    values, indices, indptr = _laplacian_internals(image, epsilon, r)
     return csr_matrix((values.ravel(), indices, indptr), (n, n))
 
