@@ -11,17 +11,17 @@ from .guided_filter import guided_filter_grey_input, guided_filter_color_input
 
 
 class HazeRemover:
-    def __init__(self, image, patch_size=PATCH_SIZE, omega=OMEGA, t0=T0, lambd=LAMBDA, eps=EPS, r=R, soft_matting=True, guided_image_filtering=False, print_intermediate=True):
+    def __init__(self, image, patch_size=PATCH_SIZE, omega=OMEGA, t0=T0, lambd=LAMBDA, eps=EPS, r=R, use_soft_matting=True, guided_image_filtering=False, print_intermediate=True):
         self.patch_size = patch_size
         self.omega = omega
         self.t0 = t0
         self.lambd = lambd
         self.print_intermediate = print_intermediate
         self.image = image
-        self.soft_matting = soft_matting
+        self.use_soft_matting = use_soft_matting
         self.guided_image_filtering = guided_image_filtering
 
-        if soft_matting:
+        if use_soft_matting:
             print("Computing matting laplacian...")
             start = time()
             self.laplacian = compute_laplacian(image, eps, r)
@@ -90,7 +90,7 @@ class HazeRemover:
         print("Computing transmission...")
         self.compute_transmission()
 
-        if self.soft_matting:
+        if self.use_soft_matting:
             print("Soft matting...")
             self.soft_matting()
         elif self.guided_image_filtering:
