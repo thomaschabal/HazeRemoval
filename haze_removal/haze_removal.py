@@ -1,6 +1,5 @@
 import numpy as np
 import skimage.exposure as exposure
-from tqdm import tqdm
 from time import time
 from scipy.ndimage import minimum_filter
 from scipy.sparse import identity, diags
@@ -8,19 +7,21 @@ from scipy.sparse.linalg import cg, aslinearoperator
 
 from .constants import PATCH_SIZE, OMEGA, T0, LAMBDA, EPS, R
 from .laplacian import compute_laplacian
+from .guided_filter import guided_filter_grey_input, guided_filter_color_input
 
 
 class HazeRemover:
-    def __init__(self, image, patch_size=PATCH_SIZE, omega=OMEGA, t0=T0, lambd=LAMBDA, eps=EPS, r=R, matting=True, print_intermediate=True):
+    def __init__(self, image, patch_size=PATCH_SIZE, omega=OMEGA, t0=T0, lambd=LAMBDA, eps=EPS, r=R, soft_matting=True, guided_image_filtering=False, print_intermediate=True):
         self.patch_size = patch_size
         self.omega = omega
         self.t0 = t0
         self.lambd = lambd
         self.print_intermediate = print_intermediate
         self.image = image
-        self.matting = matting
+        self.soft_matting = soft_matting
+        self.guided_image_filtering = guided_image_filtering
 
-        if matting:
+        if soft_matting:
             print("Computing matting laplacian...")
             start = time()
             self.laplacian = compute_laplacian(image, eps, r)
@@ -66,10 +67,15 @@ class HazeRemover:
         if self.print_intermediate:
             print("Took {:2f}s to compute soft matte".format(time() - start))
 
+    def guided_filtering(self):
+        # ========= USING GREY INPUT AS GUIDED IMAGE =================
+        self.transmission = guided_filter_grey_input(self.transmission, self.image[:,:,0])
+        # ========= USING COLORED INPUT AS GUIDED IMAGE =================
+        # self.transmission = guided_filter_color_input(self.transmission, self.image)
+
     def compute_radiance(self):
         self.radiance = (self.image - self.atmospheric_light) / np.expand_dims(np.maximum(self.transmission, self.t0), -1) + self.atmospheric_light
         self.radiance = np.clip(self.radiance, 0, 1)
-        # radiance = (radiance - np.min(radiance)) / (np.max(radiance) - np.min(radiance))
 
 
     def increase_exposure(self, value=1):
@@ -84,9 +90,11 @@ class HazeRemover:
         print("Computing transmission...")
         self.compute_transmission()
 
-        if self.matting:
+        if self.soft_matting:
             print("Soft matting...")
             self.soft_matting()
+        elif self.guided_image_filtering:
+            self.guided_filtering()
 
         print("Computing radiance...")
         self.compute_radiance()

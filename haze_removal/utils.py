@@ -1,7 +1,8 @@
+import os
 import matplotlib.pyplot as plt
-import cv2
 from skimage.io import imread
 from skimage.transform import resize
+
 
 def load_image(path, maxwh=400, show_image=True):
     image = imread(path)
@@ -26,3 +27,38 @@ def show_imgs(imgs, figsize=(20,10)):
         plt.imshow(img)
         plt.axis('off')
     plt.show()
+
+
+def str2bool(string):
+    if string in ["True", "true", "t", "T"]:
+        return True
+    elif string in ["False", "false", "f", "F"]:
+        return False
+    else:
+        raise Exception(f"Option not understood: {string}")
+
+
+def create_save_folder_and_get_file_info(file_path, save_folder):
+    if save_folder[-1] != '/':
+        save_folder += '/'
+
+    file_name = file_path.split('/')[-1]
+    name, extension = file_name.split('.')
+    save_folder += name + '/'
+
+    if not os.path.exists(save_folder):
+        os.makedirs(save_folder)
+    
+    return name, extension, save_folder
+
+
+def get_save_extension(soft_matting, guided_filtering, height, file_extension):
+    if soft_matting:
+        method_type = "soft_matting"
+    elif guided_filtering:
+        method_type = "guided_filtering"
+    else:
+        method_type = "basic"
+    extension = f"{method_type}_{height}px.{file_extension}"
+    
+    return extension
