@@ -3,8 +3,8 @@ import skimage.exposure as exposure
 from tqdm import tqdm
 from time import time
 from scipy.ndimage import minimum_filter
-from scipy.sparse import identity
-from scipy.sparse.linalg import spsolve
+from scipy.sparse import identity, diags
+from scipy.sparse.linalg import cg, aslinearoperator
 
 from .constants import PATCH_SIZE, OMEGA, T0, LAMBDA, EPS, R
 from .laplacian import compute_laplacian
@@ -54,7 +54,12 @@ class HazeRemover:
         start = time()
         A = self.laplacian + self.lambd * identity(self.laplacian.shape[0])
         b = self.lambd * self.transmission.ravel()
-        self.transmission = spsolve(A, b).reshape(self.image.shape[:2])
+        M = aslinearoperator(diags(1.0 / A.diagonal()))
+        tmp, s = cg(A, b, M=M, maxiter=1000)[0].reshape(self.image.shape[:2])
+        if s == 0:
+            self.transmission = tmp
+        else:
+            print("Failed to compute soft matte")
 
         # self.transmission = np.clip(self.transmission, 0, 1)  #fixme
 
