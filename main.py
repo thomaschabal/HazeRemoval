@@ -32,6 +32,6 @@ radiance, transmission, _ = haze_remover.remove_haze(.6)
 
 
 extension = get_save_extension(args.soft_matting, args.guided_filtering, args.resize, file_extension)
-plt.imsave(save_folder + f"{name}_original_{extension}", image)
+plt.imsave(save_folder + f"{name}_original", image)
 plt.imsave(save_folder + f"{name}_radiance_{extension}", radiance)
 plt.imsave(save_folder + f"{name}_transmission_{extension}", transmission)
