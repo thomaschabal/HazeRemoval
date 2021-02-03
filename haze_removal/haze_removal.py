@@ -49,16 +49,14 @@ class HazeRemover:
         dark_channel_normalized = self.extract_dark_channel(self.image / self.atmospheric_light[None, None])
         self.transmission = 1 - self.omega * dark_channel_normalized
 
-    #TODO: ADD GUIDED FILTERING
-
     def soft_matting(self):
         start = time()
         A = self.laplacian + self.lambd * identity(self.laplacian.shape[0])
         b = self.lambd * self.transmission.ravel()
         M = aslinearoperator(diags(1.0 / A.diagonal()))
-        tmp, s = cg(A, b, M=M, maxiter=1000)[0].reshape(self.image.shape[:2])
+        tmp, s = cg(A, b, M=M, maxiter=1000)
         if s == 0:
-            self.transmission = tmp
+            self.transmission = tmp.reshape(self.image.shape[:2])
         else:
             print("Failed to compute soft matte")
 
