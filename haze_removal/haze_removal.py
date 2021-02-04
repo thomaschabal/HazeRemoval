@@ -1,39 +1,36 @@
 import numpy as np
 import skimage.exposure as exposure
+from warnings import warn
 from time import time
 from scipy.ndimage import minimum_filter
 from scipy.sparse import identity, diags
 from scipy.sparse.linalg import cg, aslinearoperator
 
-from .constants import PATCH_SIZE, OMEGA, T0, LAMBDA, EPS, R
+from .constants import PATCH_SIZE, OMEGA, T0, LAMBDA, EPS, R, OPAQUE
 from .laplacian import compute_laplacian
 from .guided_filter import guided_filter_grey_input, guided_filter_color_input
 
 
 class HazeRemover:
-    def __init__(self, image, patch_size=PATCH_SIZE, omega=OMEGA, t0=T0, lambd=LAMBDA, eps=EPS, r=R, use_soft_matting=True, guided_image_filtering=False, print_intermediate=True):
+    def __init__(self, image, patch_size=PATCH_SIZE, omega=OMEGA, t0=T0, lambd=LAMBDA, eps=EPS, r=R, opaque=OPAQUE,  use_soft_matting=True, guided_image_filtering=False, print_intermediate=True):
         self.patch_size = patch_size
         self.omega = omega
         self.t0 = t0
         self.lambd = lambd
+        self.opaque = opaque
+        self.eps = eps
+        self.r = r
         self.print_intermediate = print_intermediate
         self.image = image
         self.use_soft_matting = use_soft_matting
         self.guided_image_filtering = guided_image_filtering
-
-        if use_soft_matting:
-            print("Computing matting laplacian...")
-            start = time()
-            self.laplacian = compute_laplacian(image, eps, r)
-            if print_intermediate:
-                print("Took {:2f}s to compute laplacian".format(time() - start))
 
     def extract_dark_channel(self, img):
         return np.min(minimum_filter(img, self.patch_size), axis=2)
 
     def compute_atmospheric_light(self):
         dark_channel = self.extract_dark_channel(self.image)
-        n = int(1e-3 * np.prod(dark_channel.shape))
+        n = int(self.opaque * np.prod(dark_channel.shape))
         brightest_dark_channel = np.argpartition(dark_channel.ravel(), -n)[-n:]
 
         maximum_intensity = 0
@@ -50,15 +47,22 @@ class HazeRemover:
         self.transmission = 1 - self.omega * dark_channel_normalized
 
     def soft_matting(self):
+        print("Computing matting laplacian...")
         start = time()
-        A = self.laplacian + self.lambd * identity(self.laplacian.shape[0])
+        laplacian = compute_laplacian(self.image, self.eps, self.r)
+        if self.print_intermediate:
+            print("Took {:2f}s to compute laplacian".format(time() - start))
+
+        print("Soft matting...")
+        start = time()
+        A = laplacian + self.lambd * identity(laplacian.shape[0])
         b = self.lambd * self.transmission.ravel()
         M = aslinearoperator(diags(1.0 / A.diagonal()))
         tmp, s = cg(A, b, M=M, maxiter=1000)
         if s == 0:
             self.transmission = tmp.reshape(self.image.shape[:2])
         else:
-            print("Failed to compute soft matte")
+            warn("Failed to compute soft matte")
 
         # self.transmission = np.clip(self.transmission, 0, 1)  #fixme
 
@@ -66,14 +70,19 @@ class HazeRemover:
             print("Took {:2f}s to compute soft matte".format(time() - start))
 
     def guided_filtering(self):
+        start = time()
         # ========= USING GREY INPUT AS GUIDED IMAGE =================
         self.transmission = guided_filter_grey_input(self.transmission, self.image[:,:,0])
         # ========= USING COLORED INPUT AS GUIDED IMAGE =================
         # self.transmission = guided_filter_color_input(self.transmission, self.image)
+        if self.print_intermediate:
+            print("Took {:2f}s to perform guided filtering".format(time() - start))
 
     def compute_radiance(self):
         self.radiance = (self.image - self.atmospheric_light) / np.expand_dims(np.maximum(self.transmission, self.t0), -1) + self.atmospheric_light
-        self.radiance = np.clip(self.radiance, 0, 1)
+        if (self.radiance < 0).any() or (self.radiance > 1).any():
+            warn("Clipping radiance")
+            self.radiance = np.clip(self.radiance, 0, 1)
 
 
     def increase_exposure(self, value=1):
@@ -89,9 +98,9 @@ class HazeRemover:
         self.compute_transmission()
 
         if self.use_soft_matting:
-            print("Soft matting...")
             self.soft_matting()
         elif self.guided_image_filtering:
+            print("Guided filtering...")
             self.guided_filtering()
 
         print("Computing radiance...")
