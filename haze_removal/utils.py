@@ -5,7 +5,7 @@ from skimage.transform import resize
 
 
 def load_image(path, maxwh=400, show_image=True):
-    image = imread(path)
+    image = imread(path) / 255
     h, w = image.shape[:2]
     if max(h, w) > maxwh:
         if h > w:
@@ -48,7 +48,7 @@ def create_save_folder_and_get_file_info(file_path, save_folder):
 
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
-    
+
     return name, extension, save_folder
 
 
@@ -60,5 +60,5 @@ def get_save_extension(soft_matting, guided_filtering, height, file_extension):
     else:
         method_type = "basic"
     extension = f"{method_type}_{height}px.{file_extension}"
-    
+
     return extension
