@@ -4,3 +4,4 @@ T0 = 0.1
 LAMBDA = 1e-4
 EPS = 1e-7
 R = 1
+OPAQUE = 1e-3
