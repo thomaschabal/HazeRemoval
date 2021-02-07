@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 from numba import jit
 
 
@@ -19,7 +20,7 @@ def extract_subpart3d(img, x, y, padding):
 
 # ========= USING GREY INPUT AS GUIDED IMAGE =================
 @jit
-def guided_filter_grey_input(input, guide_image, window_size=40, eps=0.001):
+def compute_guided_filter_grey(input, guide_image, window_size=40, eps=0.001):
     A = np.zeros_like(guide_image)
     B = np.zeros_like(guide_image)
     padding = (window_size - 1) // 2
@@ -46,12 +47,35 @@ def guided_filter_grey_input(input, guide_image, window_size=40, eps=0.001):
             mean_A[x, y] = np.mean(extract_subpart2d(A, x, y, padding))
             mean_B[x, y] = np.mean(extract_subpart2d(B, x, y, padding))
 
+    return mean_A, mean_B
+
+
+@jit
+def guided_filter_grey(input, guide_image, window_size=40, eps=0.001):
+    mean_A, mean_B = compute_guided_filter_grey(input, guide_image, window_size, eps)
+    return mean_A * guide_image + mean_B
+
+
+def fast_guided_filter_grey(input, guide_image, scale_factor=4, window_size=40, eps=0.001):
+    hs_input, ws_input = input.shape[0] // scale_factor, input.shape[1] // scale_factor
+    hs_guide, ws_guide = guide_image.shape[0] // scale_factor, guide_image.shape[1] // scale_factor
+
+    input_small = cv2.resize(input, (hs_input, ws_input), interpolation=cv2.INTER_AREA)
+    guide_image_small = cv2.resize(guide_image, (hs_guide, ws_guide), interpolation=cv2.INTER_AREA)
+    window_size = window_size // scale_factor
+
+    mean_A_small, mean_B_small = compute_guided_filter_grey(input_small, guide_image_small, window_size, eps)
+
+    w_guide, h_guide = guide_image.shape[:2] # investigate why this order
+    mean_A = cv2.resize(mean_A_small, (h_guide, w_guide), interpolation=cv2.INTER_LINEAR)
+    mean_B = cv2.resize(mean_B_small, (h_guide, w_guide), interpolation=cv2.INTER_LINEAR)
+
     return mean_A * guide_image + mean_B
 
 
 # ========= USING COLORED INPUT AS GUIDED IMAGE =================
 @jit
-def guided_filter_color_input(input, guide_image, window_size=40, eps=0.001):
+def compute_guided_filter_color(input, guide_image, window_size=30, eps=0.001):
     A = np.zeros_like(guide_image)
     B = np.zeros_like(input)
     padding = (window_size - 1) // 2
@@ -83,9 +107,38 @@ def guided_filter_color_input(input, guide_image, window_size=40, eps=0.001):
             mean_A[x, y, :] = np.mean(extract_subpart3d(A, x, y, padding))
             mean_B[x, y] = np.mean(extract_subpart2d(B, x, y, padding))
     
-    output = np.zeros_like(B)
+    return mean_A, mean_B
+
+
+@jit
+def combine_meanA_meanB_guide(mean_A, guide_image, mean_B, input):
+    output = np.zeros_like(input)
+    h, w = input.shape
     for x in range(h):
         for y in range(w):
             output[x, y] = np.dot(mean_A[x,y,:], guide_image[x,y,:]) + mean_B[x,y]
-    
+
     return output
+
+
+@jit
+def guided_filter_color(input, guide_image, window_size=30, eps=0.001):
+    mean_A, mean_B = compute_guided_filter_color(input, guide_image, window_size, eps)
+    return combine_meanA_meanB_guide(mean_A, guide_image, mean_B, input)
+
+
+def fast_guided_filter_color(input, guide_image, scale_factor=4, window_size=40, eps=0.001):
+    hs_input, ws_input = input.shape[0] // scale_factor, input.shape[1] // scale_factor
+    hs_guide, ws_guide = guide_image.shape[0] // scale_factor, guide_image.shape[1] // scale_factor
+
+    input_small = cv2.resize(input, (hs_input, ws_input), interpolation=cv2.INTER_AREA)
+    guide_image_small = cv2.resize(guide_image, (hs_guide, ws_guide), interpolation=cv2.INTER_AREA)
+    window_size = window_size // scale_factor
+
+    mean_A_small, mean_B_small = compute_guided_filter_color(input_small, guide_image_small, window_size, eps)
+
+    w_guide, h_guide = guide_image.shape[:2] # investigate why this order
+    mean_A = cv2.resize(mean_A_small, (h_guide, w_guide), interpolation=cv2.INTER_LINEAR)
+    mean_B = cv2.resize(mean_B_small, (h_guide, w_guide), interpolation=cv2.INTER_LINEAR)
+
+    return combine_meanA_meanB_guide(mean_A, guide_image, mean_B, input)

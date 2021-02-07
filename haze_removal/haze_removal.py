@@ -8,11 +8,11 @@ from scipy.sparse.linalg import cg, aslinearoperator
 
 from .constants import PATCH_SIZE, OMEGA, T0, LAMBDA, EPS, R, OPAQUE
 from .laplacian import compute_laplacian
-from .guided_filter import guided_filter_grey_input, guided_filter_color_input
+from .guided_filter import guided_filter_grey, guided_filter_color, fast_guided_filter_grey, fast_guided_filter_color
 
 
 class HazeRemover:
-    def __init__(self, image, patch_size=PATCH_SIZE, omega=OMEGA, t0=T0, lambd=LAMBDA, eps=EPS, r=R, opaque=OPAQUE,  use_soft_matting=True, guided_image_filtering=False, print_intermediate=True):
+    def __init__(self, image, patch_size=PATCH_SIZE, omega=OMEGA, t0=T0, lambd=LAMBDA, eps=EPS, r=R, opaque=OPAQUE,  window_size=None, use_soft_matting=True, guided_image_filtering=False, fast_guide_filter=True, print_intermediate=True):
         self.patch_size = patch_size
         self.omega = omega
         self.t0 = t0
@@ -20,10 +20,12 @@ class HazeRemover:
         self.opaque = opaque
         self.eps = eps
         self.r = r
+        self.window_size = window_size
         self.print_intermediate = print_intermediate
         self.image = image
         self.use_soft_matting = use_soft_matting
         self.guided_image_filtering = guided_image_filtering
+        self.fast_guide_filter = fast_guide_filter
 
     def extract_dark_channel(self, img):
         return np.min(minimum_filter(img, self.patch_size), axis=2)
@@ -71,10 +73,15 @@ class HazeRemover:
 
     def guided_filtering(self):
         start = time()
+        window_size = int(10 * (np.sqrt(max(self.image.shape[:2])) // 10)) if self.window_size is None else self.window_size
+
         # ========= USING GREY INPUT AS GUIDED IMAGE =================
-        self.transmission = guided_filter_grey_input(self.transmission, self.image[:,:,0])
+        refinement_method = fast_guided_filter_grey if self.fast_guide_filter else guided_filter_grey
+
         # ========= USING COLORED INPUT AS GUIDED IMAGE =================
-        # self.transmission = guided_filter_color_input(self.transmission, self.image)
+        # refinement_method = fast_guided_filter_color if self.fast_guide_filter else guided_filter_color
+
+        self.transmission = refinement_method(self.transmission, self.image[:,:,0], window_size=window_size)
         if self.print_intermediate:
             print("Took {:2f}s to perform guided filtering".format(time() - start))
 
