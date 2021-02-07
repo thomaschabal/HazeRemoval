@@ -22,5 +22,5 @@ print(f"Loading image from {args.path}")
 image = load_image(args.path, args.resize, show_image=False)
 
 
-T0s = [0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.8, 1, 2, 5]
+T0s = [0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.8, 1, 2, 5]
 evaluate_impact_of_t0(T0s, image, save_folder)

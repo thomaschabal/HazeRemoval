@@ -55,6 +55,33 @@ def evaluate_impact_of_window_size(window_sizes, image, save_folder):
             evaluate_haze_remover(haze_remover, save_folder, "window_size", window_size)
 
 
+# Epsilon parameter to compute transmission refinement with guided filtering
+def evaluate_impact_of_epsilon(epsilons, image, save_folder):
+    for epsilon in epsilons:
+        with EvaluationMetricManager("EPSILON", epsilon):
+            haze_remover = HazeRemover(
+                image,
+                use_soft_matting=False,
+                guided_image_filtering=True,
+                eps=epsilon
+            )
+            evaluate_haze_remover(haze_remover, save_folder, "epsilon", epsilon)
+
+
+# Window size to compute transmission refinement with guided filtering
+def evaluate_impact_of_window_size_and_epsilon(window_sizes, epsilons, image, save_folder):
+    for window_size in window_sizes:
+        for epsilon in epsilons:
+            with EvaluationMetricManager("WINDOW SIZE, EPSILON", str((window_size, epsilon))):
+                haze_remover = HazeRemover(
+                    image,
+                    use_soft_matting=False,
+                    guided_image_filtering=True,
+                    window_size=window_size
+                )
+                evaluate_haze_remover(haze_remover, save_folder, "window_size_epsilon", str((window_size, epsilon)))
+
+
 # Type of matting performed
 def evaluate_impact_of_matting_methods(image, save_folder):
     with EvaluationMetricManager("Matting", "None"):
@@ -78,5 +105,15 @@ def evaluate_impact_of_matting_methods(image, save_folder):
             image,
             use_soft_matting=False,
             guided_image_filtering=True,
+            fast_guide_filter=False,
         )
         evaluate_haze_remover(haze_remover, save_folder, "matting", "guided")
+
+    with EvaluationMetricManager("Matting", "Fast guided filtering"):
+        haze_remover = HazeRemover(
+            image,
+            use_soft_matting=False,
+            guided_image_filtering=True,
+            fast_guide_filter=True,
+        )
+        evaluate_haze_remover(haze_remover, save_folder, "matting", "fast_guided")

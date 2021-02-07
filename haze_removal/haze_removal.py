@@ -81,9 +81,10 @@ class HazeRemover:
         # ========= USING COLORED INPUT AS GUIDED IMAGE =================
         # refinement_method = fast_guided_filter_color if self.fast_guide_filter else guided_filter_color
 
-        self.transmission = refinement_method(self.transmission, self.image[:,:,0], window_size=window_size)
+        self.transmission = refinement_method(self.transmission, self.image[:,:,0], window_size=window_size, eps=self.eps)
         if self.print_intermediate:
-            print("Took {:2f}s to perform guided filtering".format(time() - start))
+            method_name = "fast guided filtering" if self.fast_guide_filter else "guided filtering"
+            print("Took {:2f}s to perform {}".format(time() - start, method_name))
 
     def compute_radiance(self):
         self.radiance = (self.image - self.atmospheric_light) / np.expand_dims(np.maximum(self.transmission, self.t0), -1) + self.atmospheric_light
