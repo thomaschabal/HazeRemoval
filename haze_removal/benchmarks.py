@@ -42,6 +42,19 @@ def evaluate_impact_of_patch_size(patch_sizes, image, save_folder):
             evaluate_haze_remover(haze_remover, save_folder, "patch_size", patch_size)
 
 
+# Window size to compute transmission refinement with guided filtering
+def evaluate_impact_of_window_size(window_sizes, image, save_folder):
+    for window_size in window_sizes:
+        with EvaluationMetricManager("WINDOW SIZE", window_size):
+            haze_remover = HazeRemover(
+                image,
+                use_soft_matting=False,
+                guided_image_filtering=True,
+                window_size=window_size
+            )
+            evaluate_haze_remover(haze_remover, save_folder, "window_size", window_size)
+
+
 # Type of matting performed
 def evaluate_impact_of_matting_methods(image, save_folder):
     with EvaluationMetricManager("Matting", "None"):
