@@ -40,7 +40,7 @@ class HazeRemover:
         self.atmospheric_light = None
         interest_zone = self.image.reshape((np.prod(dark_channel.shape), -1))[brightest_dark_channel]
         for pixel in interest_zone:
-            intensity = np.sum(pixel)  #fixme: what is the definition?
+            intensity = np.sum(pixel)
             if intensity > maximum_intensity:
                 maximum_intensity = intensity
                 self.atmospheric_light = pixel
@@ -66,8 +66,6 @@ class HazeRemover:
             self.transmission = tmp.reshape(self.image.shape[:2])
         else:
             warn("Failed to compute soft matte")
-
-        # self.transmission = np.clip(self.transmission, 0, 1)  #fixme
 
         if self.print_intermediate:
             print("Took {:2f}s to compute soft matte".format(time() - start))

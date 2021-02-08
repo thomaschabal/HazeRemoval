@@ -9,7 +9,7 @@ def _laplacian_internals(image, epsilon, r):
     """
     From https://github.com/pymatting/pymatting/
     """
-    image = image[..., :3]  #fixme
+    image = image[..., :3]
     h, w, d = image.shape
     n = h * w
     size = 2 * r + 1
