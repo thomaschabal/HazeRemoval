@@ -22,7 +22,7 @@ EVALUATIONS = {
 
 parser = argparse.ArgumentParser(description="Run all the evaluation scripts")
 parser.add_argument("--folder", "-f", type=str, help="Images folder")
-parser.add_argument("--resize", type=int, help="Size of the largest side", default=1000)
+parser.add_argument("--resize", type=int, help="Size of the largest side", default=1400)
 parser.add_argument("--save_folder", "-s", type=str, help="Folder to save haze-free image in", default="./results/")
 args = parser.parse_args()
 

@@ -42,7 +42,7 @@ def evaluate_impact_of_patch_size(patch_sizes, image, save_folder):
             evaluate_haze_remover(haze_remover, save_folder, "patch_size", patch_size)
 
 
-# Window size to compute transmission refinement with guided filtering
+# Window size to compute transmission refinement with (fast) guided filtering
 def evaluate_impact_of_window_size(window_sizes, image, save_folder):
     for window_size in window_sizes:
         with EvaluationMetricManager("WINDOW SIZE", window_size):
@@ -55,7 +55,7 @@ def evaluate_impact_of_window_size(window_sizes, image, save_folder):
             evaluate_haze_remover(haze_remover, save_folder, "window_size", window_size)
 
 
-# Epsilon parameter to compute transmission refinement with guided filtering
+# Epsilon parameter to compute transmission refinement with (fast) guided filtering
 def evaluate_impact_of_epsilon(epsilons, image, save_folder):
     for epsilon in epsilons:
         with EvaluationMetricManager("EPSILON", epsilon):
@@ -68,7 +68,7 @@ def evaluate_impact_of_epsilon(epsilons, image, save_folder):
             evaluate_haze_remover(haze_remover, save_folder, "epsilon", epsilon)
 
 
-# Window size to compute transmission refinement with guided filtering
+# Window size to compute transmission refinement with (fast) guided filtering
 def evaluate_impact_of_window_size_and_epsilon(window_sizes, epsilons, image, save_folder):
     for window_size in window_sizes:
         for epsilon in epsilons:

@@ -5,6 +5,7 @@ from skimage.transform import resize
 
 
 def load_image(path, maxwh=400, show_image=True):
+    print(f"Loading image from {path}")
     image = imread(path) / 255
     h, w = image.shape[:2]
     if max(h, w) > maxwh:
@@ -27,15 +28,6 @@ def show_imgs(imgs, figsize=(20,10)):
         plt.imshow(img)
         plt.axis('off')
     plt.show()
-
-
-def str2bool(string):
-    if string in ["True", "true", "t", "T"]:
-        return True
-    elif string in ["False", "false", "f", "F"]:
-        return False
-    else:
-        raise Exception(f"Option not understood: {string}")
 
 
 def create_save_folder_and_get_file_info(file_path, save_folder):

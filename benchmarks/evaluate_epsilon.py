@@ -10,15 +10,14 @@ from haze_removal.benchmarks import evaluate_impact_of_epsilon
 
 
 parser = argparse.ArgumentParser(description="Benchmark the parameter eps")
-parser.add_argument("--path", "-p", type=str, help="Image path", default="./images/20210127_142511.jpg")
-parser.add_argument("--resize", type=int, help="Size of the largest side", default=1000)
+parser.add_argument("--path", "-p", type=str, help="Image path", default=None)
+parser.add_argument("--resize", type=int, help="Size of the largest side", default=1400)
 parser.add_argument("--save_folder", "-s", type=str, help="Folder to save haze-free image in", default="./results/epsilon/")
 args = parser.parse_args()
 
 
 _, _, save_folder = create_save_folder_and_get_file_info(args.path, args.save_folder)
 
-print(f"Loading image from {args.path}")
 image = load_image(args.path, args.resize, show_image=False)
 
 

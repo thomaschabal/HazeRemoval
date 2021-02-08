@@ -1,5 +1,6 @@
 import os
 import matplotlib.pyplot as plt
+from .constants import GAMMA
 
 
 class EvaluationMetricManager:
@@ -21,6 +22,6 @@ def save_radiance_transmission(save_folder, radiance, transmission, image, metri
     plt.imsave(save_folder + f"transmission_{metric_name}_{metric_value}.jpg", transmission, cmap='gray')
 
 
-def evaluate_haze_remover(haze_remover, save_folder, metric_name, metric_value, gamma=0.6):
+def evaluate_haze_remover(haze_remover, save_folder, metric_name, metric_value, gamma=GAMMA):
     radiance, transmission, _ = haze_remover.remove_haze(gamma)
     save_radiance_transmission(save_folder, radiance, transmission, haze_remover.image, metric_name, metric_value)

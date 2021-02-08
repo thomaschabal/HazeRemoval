@@ -141,4 +141,3 @@ def compute_laplacian(image, epsilon, r):
     n = np.prod(image.shape[:2])
     values, indices, indptr = _laplacian_internals(image, epsilon, r)
     return csr_matrix((values.ravel(), indices, indptr), (n, n))
-

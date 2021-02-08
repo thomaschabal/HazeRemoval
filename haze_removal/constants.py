@@ -6,3 +6,4 @@ EPS_SM = 1e-7
 EPS_GF = 5e-3
 R = 1
 OPAQUE = 1e-3
+GAMMA = .6
