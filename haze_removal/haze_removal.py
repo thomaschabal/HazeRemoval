@@ -73,7 +73,7 @@ class HazeRemover:
 
     def guided_filtering(self):
         start = time()
-        window_size = int(10 * (np.sqrt(max(self.image.shape[:2])) // 10)) if self.window_size is None else self.window_size
+        window_size = int(10 * 3/2 * (np.sqrt(max(self.image.shape[:2])) // 10)) if self.window_size is None else self.window_size
 
         # ========= USING GREY INPUT AS GUIDED IMAGE =================
         refinement_method = fast_guided_filter_grey if self.fast_guide_filter else guided_filter_grey
