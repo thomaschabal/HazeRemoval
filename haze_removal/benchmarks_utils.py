@@ -1,3 +1,4 @@
+import os
 import matplotlib.pyplot as plt
 
 
@@ -13,11 +14,13 @@ class EvaluationMetricManager:
         None
 
 
-def save_radiance_transmission(save_folder, radiance, transmission, metric_name, metric_value):
+def save_radiance_transmission(save_folder, radiance, transmission, image, metric_name, metric_value):
+    if not os.path.exists(save_folder + "original.jpg"):
+        plt.imsave(save_folder + "original.jpg", image)
     plt.imsave(save_folder + f"radiance_{metric_name}_{metric_value}.jpg", radiance)
     plt.imsave(save_folder + f"transmission_{metric_name}_{metric_value}.jpg", transmission, cmap='gray')
 
 
 def evaluate_haze_remover(haze_remover, save_folder, metric_name, metric_value, gamma=0.6):
     radiance, transmission, _ = haze_remover.remove_haze(gamma)
-    save_radiance_transmission(save_folder, radiance, transmission, metric_name, metric_value)
+    save_radiance_transmission(save_folder, radiance, transmission, haze_remover.image, metric_name, metric_value)
