@@ -6,19 +6,20 @@ from scipy.ndimage import minimum_filter
 from scipy.sparse import identity, diags
 from scipy.sparse.linalg import cg, aslinearoperator
 
-from .constants import PATCH_SIZE, OMEGA, T0, LAMBDA, EPS, R, OPAQUE
+from .constants import PATCH_SIZE, OMEGA, T0, LAMBDA, EPS_SM, EPS_GF, R, OPAQUE
 from .laplacian import compute_laplacian
 from .guided_filter import guided_filter_grey, guided_filter_color, fast_guided_filter_grey, fast_guided_filter_color
 
 
 class HazeRemover:
-    def __init__(self, image, patch_size=PATCH_SIZE, omega=OMEGA, t0=T0, lambd=LAMBDA, eps=EPS, r=R, opaque=OPAQUE,  window_size=None, use_soft_matting=True, guided_image_filtering=False, fast_guide_filter=True, print_intermediate=True):
+    def __init__(self, image, patch_size=PATCH_SIZE, omega=OMEGA, t0=T0, lambd=LAMBDA, eps_sm=EPS_SM, eps_gf=EPS_GF, r=R, opaque=OPAQUE,  window_size=None, use_soft_matting=True, guided_image_filtering=False, fast_guide_filter=True, print_intermediate=True):
         self.patch_size = patch_size
         self.omega = omega
         self.t0 = t0
         self.lambd = lambd
         self.opaque = opaque
-        self.eps = eps
+        self.eps_sm = eps_sm
+        self.eps_gf = eps_gf
         self.r = r
         self.window_size = window_size
         self.print_intermediate = print_intermediate
@@ -51,7 +52,7 @@ class HazeRemover:
     def soft_matting(self):
         print("Computing matting laplacian...")
         start = time()
-        laplacian = compute_laplacian(self.image, self.eps, self.r)
+        laplacian = compute_laplacian(self.image, self.eps_sm, self.r)
         if self.print_intermediate:
             print("Took {:2f}s to compute laplacian".format(time() - start))
 
@@ -60,7 +61,7 @@ class HazeRemover:
         A = laplacian + self.lambd * identity(laplacian.shape[0])
         b = self.lambd * self.transmission.ravel()
         M = aslinearoperator(diags(1.0 / A.diagonal()))
-        tmp, s = cg(A, b, M=M, maxiter=1000)
+        tmp, s = cg(A, b, M=M, maxiter=1000, tol=1e-4)
         if s == 0:
             self.transmission = tmp.reshape(self.image.shape[:2])
         else:
@@ -81,7 +82,7 @@ class HazeRemover:
         # ========= USING COLORED INPUT AS GUIDED IMAGE =================
         # refinement_method = fast_guided_filter_color if self.fast_guide_filter else guided_filter_color
 
-        self.transmission = refinement_method(self.transmission, self.image[:,:,0], window_size=window_size, eps=self.eps)
+        self.transmission = refinement_method(self.transmission, self.image[:,:,0], window_size=window_size, eps=self.eps_gf)
         if self.print_intermediate:
             method_name = "fast guided filtering" if self.fast_guide_filter else "guided filtering"
             print("Took {:2f}s to perform {}".format(time() - start, method_name))
@@ -110,6 +111,10 @@ class HazeRemover:
         elif self.guided_image_filtering:
             print("Guided filtering...")
             self.guided_filtering()
+
+        if (self.transmission < 0).any() or (self.transmission > 1).any():
+            warn("Clipping transmission")
+            self.transmission = np.clip(self.transmission, 0, 1)
 
         print("Computing radiance...")
         self.compute_radiance()
